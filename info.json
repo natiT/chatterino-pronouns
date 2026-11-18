@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/Chatterino/chatterino2/master/docs/plugin-info.schema.json",
-  "name": "Pronouns im Chat",
-  "description": "Zeigt alejo.io- und PronounDB-Pronomen direkt im Chat. Jeder User wird max. 1x pro Tag abgefragt (Cache auf Platte).",
+  "name": "Chatterino Pronouns",
+  "description": "Shows alejo.io and PronounDB pronouns directly in chat. Each user is looked up at most once per day (cached on disk).",
   "authors": ["natit"],
   "homepage": "https://pronouns.alejo.io",
   "tags": ["pronouns"],

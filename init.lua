@@ -1,20 +1,20 @@
--- Pronomen (alejo.io) direkt im Chat anzeigen.
--- Jeder User wird hoechstens 1x pro TTL abgefragt; Cache liegt in data/cache.json.
+-- Show pronouns (alejo.io, PronounDB fallback) directly in chat.
+-- Each user is looked up at most once per TTL; cache lives in data/cache.json.
 local json = require("chatterino.json")
 
----------------------------------------------------------------- Konstanten
+---------------------------------------------------------------- Constants
 local API = "https://api.pronouns.alejo.io/v1"
-local TTL = 24 * 3600           -- 1 Tag pro User (auch "keine Pronomen")
-local ERR_TTL = 15 * 60         -- nach Fehler: 15 min Ruhe (User und Liste)
-local MAX_PARALLEL = 3          -- gleichzeitige Requests
+local TTL = 24 * 3600           -- 1 day per user (also for "no pronouns")
+local ERR_TTL = 15 * 60         -- after an error: back off 15 min (user and list)
+local MAX_PARALLEL = 3          -- concurrent requests
 local TIMEOUT_MS = 10000
 local SAVE_INTERVAL_MS = 60 * 1000
 local SCAN_INTERVAL_MS = 3000
 local CACHE_FILE = "cache.json"
-local CACHE_VERSION = 2         -- 2: "keine Pronomen" auch via PronounDB geprueft
+local CACHE_VERSION = 2         -- 2: "no pronouns" also checked via PronounDB
 local PDB_API = "https://pronoundb.org/api/v2/lookup?platform=twitch&ids="
-local PDB_BATCH = 50            -- max IDs pro PronounDB-Request
-local PDB_FLUSH_MS = 2000       -- sammeln, dann gebuendelt abfragen
+local PDB_BATCH = 50            -- max IDs per PronounDB request
+local PDB_FLUSH_MS = 2000       -- collect, then query in one batch
 local USER_AGENT = "chatterino-pronouns-plugin/1.1.0 (Chatterino Lua plugin)"
 
 local USERNAME = c2.MessageElementFlag.Username
@@ -24,8 +24,8 @@ local SYSTEM = c2.MessageFlag.System
 local function log(...) c2.log(c2.LogLevel.Info, "[pronouns]", ...) end
 local function warn(...) c2.log(c2.LogLevel.Warning, "[pronouns]", ...) end
 
--- Fuehrt fn geschuetzt aus und plant sie danach immer neu ein,
--- damit ein einzelner Fehler keinen Loop beendet.
+-- Runs fn protected and always reschedules it,
+-- so a single error never kills the loop.
 local function every(ms, fn)
     local function tick()
         local ok, err = pcall(fn)
@@ -35,7 +35,7 @@ local function every(ms, fn)
     return tick
 end
 
----------------------------------------------------------------- Zeit
+---------------------------------------------------------------- Time
 local function _days_from_civil(y, m, d)
     y = (m <= 2) and (y - 1) or y
     local era = (y >= 0 and y or y - 399) // 400
@@ -46,7 +46,7 @@ local function _days_from_civil(y, m, d)
     return era * 146097 + doe - 719468
 end
 
--- Sekunden seit Epoch (lokale Zeit reicht fuer TTL-Vergleiche).
+-- Seconds since epoch (local time is fine for TTL comparisons).
 local now
 if os and os.time then
     now = os.time
@@ -82,12 +82,12 @@ local function load_cache()
     f:close()
     local ok, data = pcall(json.parse, raw)
     if not ok or type(data) ~= "table" then
-        warn("Cache kaputt, wird neu aufgebaut")
+        warn("cache corrupt, rebuilding")
         return
     end
     cache.pronouns = type(data.pronouns) == "table" and data.pronouns or nil
     cache.pronouns_t = tonumber(data.pronouns_t) or 0
-    local old = data.v ~= CACHE_VERSION -- alte Negativ-Eintraege nochmal (mit PronounDB) pruefen
+    local old = data.v ~= CACHE_VERSION -- recheck old negative entries (now with PronounDB)
     for login, e in pairs(type(data.users) == "table" and data.users or {}) do
         if type(e) == "table" and not e.err and not (old and not e.p) then cache.users[login] = e end
     end
@@ -103,7 +103,7 @@ local function save_cache()
     end
     local f = io.open(CACHE_FILE, "w")
     if not f then
-        warn("Cache nicht schreibbar")
+        warn("cache not writable")
         return
     end
     f:write(json.stringify({ v = CACHE_VERSION, users = users, pronouns = cache.pronouns, pronouns_t = cache.pronouns_t }))
@@ -118,7 +118,7 @@ local function lookup(login)
     return nil
 end
 
----------------------------------------------------------------- Pronomen-Liste
+---------------------------------------------------------------- Pronoun list
 local list_loading = false
 local list_failed_t = -math.huge
 local list_waiters = {}
@@ -133,7 +133,7 @@ local function label(pid, alt)
     return p.subject .. "/" .. p.object
 end
 
--- Ruft after() auf, sobald eine gueltige Liste da ist.
+-- Calls after() once a valid list is available.
 local function with_pronoun_list(after)
     local t = now()
     if cache.pronouns and t - cache.pronouns_t < TTL then
@@ -141,10 +141,10 @@ local function with_pronoun_list(after)
         return
     end
     if cache.pronouns and t - list_failed_t < ERR_TTL then
-        after() -- alte Liste weiterverwenden statt API zu stressen
+        after() -- reuse stale list instead of hammering the API
         return
     end
-    list_waiters[after] = true -- Set: gleiche Funktion nur einmal
+    list_waiters[after] = true -- set: same function only once
     if list_loading or t - list_failed_t < ERR_TTL then return end
 
     list_loading = true
@@ -160,11 +160,11 @@ local function with_pronoun_list(after)
     end)
     req:on_error(function(res)
         list_failed_t = now()
-        warn("Pronomen-Liste Fehler:", res:error())
+        warn("pronoun list error:", res:error())
     end)
     req:finally(function()
         list_loading = false
-        if not cache.pronouns then return end -- Waiter bleiben bis zum naechsten Versuch
+        if not cache.pronouns then return end -- waiters stay until the next attempt
         local waiters = list_waiters
         list_waiters = {}
         for fn in pairs(waiters) do fn() end
@@ -172,10 +172,10 @@ local function with_pronoun_list(after)
     req:execute()
 end
 
----------------------------------------------------------------- User-Abfragen
+---------------------------------------------------------------- User lookups
 -- pending[login] = { uid = "123", waiting = { {channel, msg}, ... }, alejo_err = bool }
 local pending = {}
-local queue = {}   -- FIFO der alejo-Abfragen
+local queue = {}   -- FIFO of alejo lookups
 local queue_head = 1
 local running = 0
 
@@ -201,7 +201,7 @@ local function request(url)
     return req
 end
 
------------------------------------------------- PronounDB (Fallback, gebuendelt)
+------------------------------------------------ PronounDB (fallback, batched)
 local PDB_NAMES = {
     he = { "He", "Him" }, she = { "She", "Her" }, it = { "It", "Its" }, they = { "They", "Them" },
     any = { "Any" }, ask = { "Ask" }, avoid = { "Avoid" }, other = { "Other" },
@@ -242,7 +242,7 @@ local function pdb_flush()
     end)
     req:on_error(function(res)
         failed = true
-        warn("PronounDB Fehler:", res:error())
+        warn("PronounDB error:", res:error())
     end)
     req:finally(function()
         pdb_busy = false
@@ -263,7 +263,7 @@ local function pdb_enqueue(login, uid)
     if #pdb_queue >= PDB_BATCH then pdb_flush() end
 end
 
------------------------------------------------- alejo.io (zuerst)
+------------------------------------------------ alejo.io (primary)
 local function alejo_done(login, p, err)
     local entry = pending[login]
     if p then return finish(login, p) end
@@ -309,7 +309,7 @@ pump = function()
     end
 end
 
----------------------------------------------------------------- Nachricht umbauen
+---------------------------------------------------------------- Message rewriting
 decorate = function(channel, msg)
     local e = cache.users[msg.login_name]
     if not (e and e.p) or not channel:is_valid() then return end
@@ -325,7 +325,7 @@ decorate = function(channel, msg)
     end
     if not idx then return end
 
-    -- Kopie bis vor den Namen kuerzen, Pronomen einfuegen, Rest wieder anhaengen.
+    -- Trim the copy up to the username, insert pronouns, re-append the rest.
     local new = msg:clone()
     local els = new:elements()
     for i = #els, idx, -1 do els:erase(i) end
@@ -335,7 +335,7 @@ decorate = function(channel, msg)
         color = "system",
         style = c2.FontStyle.ChatMediumSmall,
         flags = c2.MessageElementFlag.Text,
-        tooltip = "Pronomen (pronouns.alejo.io)",
+        tooltip = "Pronouns (alejo.io / PronounDB)",
     })
     for i = idx, #orig do new:append_element(orig[i]) end
     channel:replace_message(msg, new)
@@ -348,7 +348,7 @@ local function on_message(channel, msg)
     local e = lookup(login)
     if e then
         if e.p then
-            -- nicht synchron im append-Signal ersetzen
+            -- do not replace synchronously inside the append signal
             c2.later(function() pcall(decorate, channel, msg) end, 1)
         end
         return
@@ -364,7 +364,7 @@ local function on_message(channel, msg)
     with_pronoun_list(pump)
 end
 
----------------------------------------------------------------- Kanaele einhaengen
+---------------------------------------------------------------- Channel hooks
 local hooked = {} -- name -> { ch = Channel, h = ConnectionHandle }
 
 local function hook(ch)
@@ -403,4 +403,4 @@ c2.later(every(PDB_FLUSH_MS, pdb_flush), PDB_FLUSH_MS)
 
 local n = 0
 for _ in pairs(cache.users) do n = n + 1 end
-log("geladen, User im Cache:", n)
+log("loaded, users in cache:", n)
