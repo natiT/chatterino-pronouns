@@ -13,6 +13,8 @@ Put this folder at `~/.local/share/chatterino/Plugins/pronouns`, then enable it 
 Chatterino under Settings → Plugins and grant the permissions (Network, Filesystem).
 Requires a Chatterino build with `CHATTERINO_PLUGINS` enabled.
 
+Tested on CachyOS (Arch Linux, Hyprland) with Chatterino7 2.5.6 (commit `910b01d`, AUR `chatterino2-7tv-git`).
+
 ## Credits
 
 Script written with AI assistance.
