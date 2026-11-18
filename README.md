@@ -1,12 +1,12 @@
 # Chatterino Pronouns
 
-Chatterino-Lua-Plugin: zeigt Pronomen direkt im Chat vor dem Namen.
+Chatterino Lua plugin that shows pronouns directly in chat, right before the username.
 
-- Quelle 1: [pronouns.alejo.io](https://pronouns.alejo.io), Fallback: [PronounDB](https://pronoundb.org) (gebündelt, max. 50 IDs/Request)
-- Jeder User wird max. 1x pro Tag abgefragt; Cache in `data/cache.json`
+- Primary source: [pronouns.alejo.io](https://pronouns.alejo.io), fallback: [PronounDB](https://pronoundb.org) (batched, up to 50 IDs per request)
+- Each user is looked up at most once per day; results are cached in `data/cache.json`
 
 ## Installation
 
-Ordner nach `~/.local/share/chatterino/Plugins/pronouns` legen, in Chatterino unter
-Einstellungen → Plugins aktivieren und Berechtigungen (Network, Filesystem) erlauben.
-Benötigt einen Chatterino-Build mit `CHATTERINO_PLUGINS`.
+Put this folder at `~/.local/share/chatterino/Plugins/pronouns`, then enable it in
+Chatterino under Settings → Plugins and grant the permissions (Network, Filesystem).
+Requires a Chatterino build with `CHATTERINO_PLUGINS` enabled.
