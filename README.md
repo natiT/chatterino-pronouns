@@ -24,3 +24,5 @@ Tested on CachyOS (Arch Linux, Hyprland) with Chatterino7 2.5.6 (commit `910b01d
 Script written with AI assistance.
 
 Built for [Chatterino](https://github.com/Chatterino/chatterino2) and [Chatterino7](https://github.com/SevenTV/chatterino7).
+
+Pronoun data from [alejo.io Pronouns](https://pronouns.alejo.io).

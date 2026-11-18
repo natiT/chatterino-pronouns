@@ -3,7 +3,7 @@
   "name": "Chatterino Pronouns",
   "description": "Shows alejo.io and PronounDB pronouns directly in chat. Each user is looked up at most once per day (cached on disk).",
   "authors": ["natit"],
-  "homepage": "https://pronouns.alejo.io",
+  "homepage": "https://github.com/natiT/chatterino-pronouns",
   "tags": ["pronouns"],
   "version": "1.1.0",
   "license": "MIT",
