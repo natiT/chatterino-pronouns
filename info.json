@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Chatterino/chatterino2/master/docs/plugin-info.schema.json",
+  "name": "Pronouns im Chat",
+  "description": "Zeigt alejo.io- und PronounDB-Pronomen direkt im Chat. Jeder User wird max. 1x pro Tag abgefragt (Cache auf Platte).",
+  "authors": ["natit"],
+  "homepage": "https://pronouns.alejo.io",
+  "tags": ["pronouns"],
+  "version": "1.1.0",
+  "license": "MIT",
+  "permissions": [
+    { "type": "Network" },
+    { "type": "FilesystemRead" },
+    { "type": "FilesystemWrite" }
+  ]
+}
