@@ -1,4 +1,4 @@
--- Show pronouns (alejo.io, PronounDB fallback) directly in chat.
+-- Show pronouns (PronounDB batched, alejo.io fallback) directly in chat.
 -- Each user is looked up at most once per TTL; cache lives in data/cache.json.
 local json = require("chatterino.json")
 
@@ -173,7 +173,7 @@ local function with_pronoun_list(after)
 end
 
 ---------------------------------------------------------------- User lookups
--- pending[login] = { uid = "123", waiting = { {channel, msg}, ... }, alejo_err = bool }
+-- pending[login] = { uid = "123", waiting = { {channel, msg}, ... }, pdb_err = bool }
 local pending = {}
 local queue = {}   -- FIFO of alejo lookups
 local queue_head = 1
@@ -181,6 +181,14 @@ local running = 0
 
 local decorate -- forward
 local pump     -- forward
+
+-- Queue an alejo lookup (needs the pronoun list for labels).
+local function alejo_enqueue(login, pdb_err)
+    local entry = pending[login]
+    if entry then entry.pdb_err = pdb_err or nil end
+    queue[#queue + 1] = login
+    with_pronoun_list(pump)
+end
 
 local function finish(login, p, err)
     cache.users[login] = { p = p, t = now(), err = err or nil }
@@ -201,7 +209,7 @@ local function request(url)
     return req
 end
 
------------------------------------------------- PronounDB (fallback, batched)
+------------------------------------------------ PronounDB (primary, batched)
 local PDB_NAMES = {
     he = { "He", "Him" }, she = { "She", "Her" }, it = { "It", "Its" }, they = { "They", "Them" },
     any = { "Any" }, ask = { "Ask" }, avoid = { "Avoid" }, other = { "Other" },
@@ -248,10 +256,12 @@ local function pdb_flush()
         pdb_busy = false
         for _, item in ipairs(batch) do
             local login, uid = item[1], item[2]
-            local entry = pending[login]
             local p = results and results[uid] and pdb_label(results[uid].sets) or false
-            local err = (not p) and (failed or (entry and entry.alejo_err)) or false
-            finish(login, p, err)
+            if p then
+                finish(login, p)
+            else
+                alejo_enqueue(login, failed)
+            end
         end
         if #pdb_queue >= PDB_BATCH then pdb_flush() end
     end)
@@ -263,15 +273,11 @@ local function pdb_enqueue(login, uid)
     if #pdb_queue >= PDB_BATCH then pdb_flush() end
 end
 
------------------------------------------------- alejo.io (primary)
+------------------------------------------------ alejo.io (fallback, one per user)
 local function alejo_done(login, p, err)
     local entry = pending[login]
     if p then return finish(login, p) end
-    if entry and entry.uid and entry.uid ~= "" then
-        entry.alejo_err = err
-        return pdb_enqueue(login, entry.uid)
-    end
-    finish(login, false, err)
+    finish(login, false, err or (entry and entry.pdb_err) or false)
 end
 
 local function fetch(login)
@@ -335,7 +341,7 @@ decorate = function(channel, msg)
         color = "system",
         style = c2.FontStyle.ChatMediumSmall,
         flags = c2.MessageElementFlag.Text,
-        tooltip = "Pronouns (alejo.io / PronounDB)",
+        tooltip = "Pronouns (PronounDB / alejo.io)",
     })
     for i = idx, #orig do new:append_element(orig[i]) end
     channel:replace_message(msg, new)
@@ -359,9 +365,13 @@ local function on_message(channel, msg)
         table.insert(entry.waiting, { channel, msg })
         return
     end
-    pending[login] = { uid = msg.user_id, waiting = { { channel, msg } } }
-    queue[#queue + 1] = login
-    with_pronoun_list(pump)
+    local uid = msg.user_id
+    pending[login] = { uid = uid, waiting = { { channel, msg } } }
+    if uid and uid ~= "" then
+        pdb_enqueue(login, uid)
+    else
+        alejo_enqueue(login)
+    end
 end
 
 ---------------------------------------------------------------- Channel hooks

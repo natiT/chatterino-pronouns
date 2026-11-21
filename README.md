@@ -4,7 +4,7 @@ Chatterino Lua plugin that shows pronouns directly in chat, right before the use
 
 The built-in pronouns integration in Chatterino sucks (pronouns only show up in the user card) and they not willing to fix this, so I fixed it.
 
-- Primary source: [pronouns.alejo.io](https://pronouns.alejo.io), fallback: [PronounDB](https://pronoundb.org) (batched, up to 50 IDs per request)
+- Primary source: [PronounDB](https://pronoundb.org) (batched, up to 50 IDs per request), fallback: [pronouns.alejo.io](https://pronouns.alejo.io) (one request per user, only if PronounDB has nothing)
 - Each user is looked up at most once per day; results are cached in `data/cache.json`
 
 ## Installation
@@ -25,4 +25,4 @@ Script written with AI assistance.
 
 Built for [Chatterino](https://github.com/Chatterino/chatterino2) and [Chatterino7](https://github.com/SevenTV/chatterino7).
 
-Pronoun data from [alejo.io Pronouns](https://pronouns.alejo.io).
+Pronoun data from [PronounDB](https://pronoundb.org) and [alejo.io Pronouns](https://pronouns.alejo.io).
