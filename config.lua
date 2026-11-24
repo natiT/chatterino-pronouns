@@ -1,9 +1,18 @@
 -- All tunables in one place.
+-- Plugin version; keep in sync with info.json (the plugin cannot read it at runtime).
+local VERSION = "1.1.0"
+
 return {
+    VERSION = VERSION,
     ALEJO_API = "https://api.pronouns.alejo.io/v1",
     PDB_API = "https://pronoundb.org/api/v2/lookup?platform=twitch&ids=",
-    -- PronounDB asks for name + version; keep the version in sync with info.json.
-    USER_AGENT = "chatterino-pronouns-plugin/1.1.0 (Chatterino Lua plugin)",
+    -- PronounDB asks for name + version.
+    USER_AGENT = "chatterino-pronouns-plugin/" .. VERSION .. " (Chatterino Lua plugin)",
+
+    -- info.json of the latest release, compared against VERSION once per start
+    UPDATE_INFO_URL = "https://raw.githubusercontent.com/natiT/chatterino-pronouns/main/info.json",
+    UPDATE_PAGE_URL = "https://github.com/natiT/chatterino-pronouns",
+    UPDATE_CHECK_DELAY_MS = 10 * 1000, -- after startup, once channels are hooked
 
     CACHE_TTL_S = 24 * 3600,          -- per user (also for "no pronouns") and for the pronoun list
     ERROR_BACKOFF_S = 15 * 60,        -- after an error: retry user / list after this

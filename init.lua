@@ -11,6 +11,7 @@
 --   pronoundb     PronounDB batch lookups (primary)
 --   alejo         alejo.io lookups (fallback)
 --   decorate      inserts the label into a message
+--   update_check  notifies about a newer plugin version on GitHub
 local config = require("config")
 local util = require("util")
 local cache = require("cache")
@@ -19,6 +20,7 @@ local pending = require("pending")
 local pronoundb = require("pronoundb")
 local alejo = require("alejo")
 local decorate = require("decorate")
+local update_check = require("update_check")
 
 local SYSTEM_FLAG = c2.MessageFlag.System
 
@@ -75,11 +77,21 @@ local function scan()
     end
 end
 
+-- Show a system message in every hooked channel.
+local function notify(text)
+    for _, entry in pairs(hooked) do
+        if entry.channel:is_valid() then
+            util.try(entry.channel.add_system_message, entry.channel, text)
+        end
+    end
+end
+
 ---------------------------------------------------------------- Start
 util.try(cache.load)
 pronoun_list.with(util.noop) -- warm up the list
 c2.later(util.every(config.SAVE_INTERVAL_MS, cache.save), config.SAVE_INTERVAL_MS)
 c2.later(util.every(config.SCAN_INTERVAL_MS, scan), config.SCAN_START_DELAY_MS)
 c2.later(util.every(config.PDB_FLUSH_MS, pronoundb.flush), config.PDB_FLUSH_MS)
+c2.later(function() util.try(update_check.run, notify) end, config.UPDATE_CHECK_DELAY_MS)
 
 util.log("loaded, users in cache:", cache.count())
