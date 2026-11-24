@@ -9,9 +9,9 @@ return {
     -- PronounDB asks for name + version.
     USER_AGENT = "chatterino-pronouns-plugin/" .. VERSION .. " (Chatterino Lua plugin)",
 
-    -- info.json of the latest release, compared against VERSION once per start
-    UPDATE_INFO_URL = "https://raw.githubusercontent.com/natiT/chatterino-pronouns/main/info.json",
-    UPDATE_PAGE_URL = "https://github.com/natiT/chatterino-pronouns",
+    -- latest GitHub release, its tag (v1.2.0) is compared against VERSION once per start
+    UPDATE_INFO_URL = "https://api.github.com/repos/natiT/chatterino-pronouns/releases/latest",
+    UPDATE_PAGE_URL = "https://github.com/natiT/chatterino-pronouns/releases/latest",
     UPDATE_CHECK_DELAY_MS = 10 * 1000, -- after startup, once channels are hooked
 
     CACHE_TTL_S = 24 * 3600,          -- per user (also for "no pronouns") and for the pronoun list

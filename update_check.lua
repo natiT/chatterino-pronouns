@@ -1,4 +1,4 @@
--- Checks once whether a newer plugin version is published on GitHub.
+-- Checks once whether a newer plugin release is published on GitHub.
 local json = require("chatterino.json")
 local config = require("config")
 local util = require("util")
@@ -27,18 +27,23 @@ function update_check.run(notify)
     local req = http.get(config.UPDATE_INFO_URL)
     if not req then return end
     req:on_success(function(res)
-        local ok, info = pcall(json.parse, res:data())
-        local remote = ok and type(info) == "table" and parse_version(info.version)
+        -- GitHub release JSON: { tag_name = "v1.2.0", html_url = "https://github.com/..." }
+        local ok, release = pcall(json.parse, res:data())
+        if not ok or type(release) ~= "table" or not util.is_id(release.tag_name) then return end
+        local remote_version = release.tag_name:gsub("^v", "")
+        local remote = parse_version(remote_version)
         local current = parse_version(config.VERSION)
         if not (remote and current) then return end
         if is_newer(remote, current) then
+            local link = util.is_id(release.html_url) and release.html_url or config.UPDATE_PAGE_URL
             local text = ("Pronouns plugin update available: %s -> %s (%s)")
-                :format(config.VERSION, info.version, config.UPDATE_PAGE_URL)
+                :format(config.VERSION, remote_version, link)
             util.log(text)
             notify(text)
         end
     end)
     req:on_error(function(res)
+        if res:status() == 404 then return end -- no release published yet
         util.warn("update check failed:", res:error())
     end)
     req:execute()
