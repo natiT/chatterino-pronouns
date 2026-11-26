@@ -1,6 +1,6 @@
 -- All tunables in one place.
 -- Plugin version; keep in sync with info.json (the plugin cannot read it at runtime).
-local VERSION = "1.2.0"
+local VERSION = "1.2.1"
 
 return {
     VERSION = VERSION,
