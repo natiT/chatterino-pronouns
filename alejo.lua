@@ -54,7 +54,9 @@ local function fetch(login)
     running = running + 1
     local outcome, pronouns = "error", false -- stays "error" if on_success throws
     req:on_success(function(res)
-        local ok, data = pcall(json.parse, res:data())
+        local text_ok, text = pcall(function() return res:data() end)
+        if not text_ok or type(text) ~= "string" then return end
+        local ok, data = pcall(json.parse, text)
         if not ok or type(data) ~= "table" then return end
         if not util.is_id(data.pronoun_id) then
             outcome = "none"

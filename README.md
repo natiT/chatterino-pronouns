@@ -23,6 +23,6 @@ Tested on CachyOS  with Chatterino7 2.5.6 (commit `910b01d`, AUR `chatterino2-7t
 
 Script written with AI assistance.
 
-Built for [Chatterino7](https://github.com/SevenTV/chatterino7).
+Built for [Chatterino](https://github.com/Chatterino/chatterino2) and [Chatterino7](https://github.com/SevenTV/chatterino7).
 
 Pronoun data from [PronounDB](https://pronoundb.org) and [alejo.io Pronouns](https://pronouns.alejo.io).

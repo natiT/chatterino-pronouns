@@ -66,7 +66,9 @@ function pronoundb.flush()
     if not req then return finish() end
     busy = true
     req:on_success(function(res)
-        local ok, data = pcall(json.parse, res:data())
+        local text_ok, text = pcall(function() return res:data() end)
+        local ok, data = false, nil
+        if text_ok and type(text) == "string" then ok, data = pcall(json.parse, text) end
         if ok and type(data) == "table" then results, failed = data, false end
     end)
     req:on_error(function(res)

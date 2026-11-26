@@ -80,7 +80,9 @@ function pronoun_list.with(on_ready)
     end
     loading = true
     req:on_success(function(res)
-        local ok, data = pcall(json.parse, res:data())
+        local text_ok, text = pcall(function() return res:data() end)
+        local ok, data = false, nil
+        if text_ok and type(text) == "string" then ok, data = pcall(json.parse, text) end
         if ok and type(data) == "table" then
             cache.pronoun_list, cache.pronoun_list_fetched_at, cache.dirty = data, util.now(), true
         else

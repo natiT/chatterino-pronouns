@@ -51,8 +51,19 @@ end
 ---------------------------------------------------------------- Channel hooks
 local hooked = {} -- channel name -> { channel = Channel, handle = ConnectionHandle }
 
+-- c2.ChannelType.Twitch is missing on some builds (seen on Windows 2.5.6),
+-- so use the channel method first and fall back to the documented enum value.
+local function is_twitch(channel)
+    if channel.is_twitch_channel then
+        local ok, result = pcall(channel.is_twitch_channel, channel)
+        if ok and type(result) == "boolean" then return result end
+    end
+    local ok, channel_type = pcall(function() return channel:get_type() end)
+    return ok and channel_type == (c2.ChannelType.Twitch or 2)
+end
+
 local function hook(channel)
-    if not (channel and channel:is_valid()) or channel:get_type() ~= c2.ChannelType.Twitch then return end
+    if not (channel and channel:is_valid()) or not is_twitch(channel) then return end
     local name = channel:get_name()
     local existing = hooked[name]
     if existing and existing.channel:is_valid() and existing.handle:is_connected() then return end
